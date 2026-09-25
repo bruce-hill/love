@@ -25,6 +25,7 @@
 #include "common/Exception.h"
 
 // C++
+#include <algorithm>
 #include <vector>
 
 namespace love
@@ -38,9 +39,16 @@ namespace lullaby
 static OSStatus readFunc(void *inClientData, SInt64 inPosition, UInt32 requestCount, void *buffer, UInt32 *actualCount)
 {
 	auto stream = (Stream *) inClientData;
+
+	if (!stream->seek(inPosition, Stream::SEEKORIGIN_BEGIN))
+	{
+		*actualCount = 0;
+		return kAudioFilePositionError;
+	}
+
 	int64 readbytes = stream->read(buffer, requestCount);
 
-	*actualCount = (UInt32) readbytes;
+	*actualCount = (UInt32) std::max<int64>(0, readbytes);
 	return readbytes > 0 ? noErr : kAudioFilePositionError;
 }
 
