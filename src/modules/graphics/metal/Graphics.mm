@@ -729,11 +729,23 @@ void Graphics::submitRenderEncoder(SubmitType type)
 		const auto &rts = states.back().renderTargets;
 		bool isbackbuffer = rts.getFirstTarget().texture.get() == nullptr;
 
+		// Attachments with a resolve texture (MSAA) must use a resolving store
+		// action, even when the pass ends early (e.g. a clear mid-pass).
+		auto colorStoreAction = [&](size_t i) -> MTLStoreAction
+		{
+			MTLStoreAction action = actions.color[i];
+			if (!store)
+				return action;
+			if (action == MTLStoreActionMultisampleResolve || action == MTLStoreActionStoreAndMultisampleResolve)
+				return MTLStoreActionStoreAndMultisampleResolve;
+			return MTLStoreActionStore;
+		};
+
 		if (isbackbuffer)
-			[renderEncoder setColorStoreAction:(store ? MTLStoreActionStore : actions.color[0]) atIndex:0];
+			[renderEncoder setColorStoreAction:colorStoreAction(0) atIndex:0];
 
 		for (size_t i = 0; i < rts.colors.size(); i++)
-			[renderEncoder setColorStoreAction:(store ? MTLStoreActionStore : actions.color[i]) atIndex:i];
+			[renderEncoder setColorStoreAction:colorStoreAction(i) atIndex:i];
 
 		love::graphics::Texture *ds = rts.depthStencil.texture.get();
 		if (isbackbuffer)
