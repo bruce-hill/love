@@ -673,7 +673,9 @@ id<MTLRenderCommandEncoder> Graphics::useRenderEncoder()
 
 			if (backbufferMSAA.get())
 			{
-				attachmentStoreActions.color[0] = MTLStoreActionMultisampleResolve;
+				// Keep the samples, since the pass can end mid-frame (e.g. to draw to a canvas)
+				// and later passes load them. Presenting discards them (see endPass).
+				attachmentStoreActions.color[0] = MTLStoreActionStoreAndMultisampleResolve;
 				passDesc.colorAttachments[0].texture = getMTLRenderTarget(backbufferMSAA);
 				passDesc.colorAttachments[0].resolveTexture = activeDrawable.texture;
 			}
@@ -1564,6 +1566,10 @@ void Graphics::endPass(bool presenting)
 		attachmentStoreActions.depth = MTLStoreActionDontCare;
 		attachmentStoreActions.stencil = MTLStoreActionDontCare;
 	}
+
+	// Nothing loads the backbuffer's MSAA samples after it's presented.
+	if (presenting && !rts.getFirstTarget().texture.get() && backbufferMSAA.get())
+		attachmentStoreActions.color[0] = MTLStoreActionMultisampleResolve;
 
 	submitRenderEncoder(SUBMIT_DONE);
 }
