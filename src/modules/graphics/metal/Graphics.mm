@@ -512,6 +512,10 @@ void Graphics::backbufferChanged(const BackbufferSettings &settings)
 		{
 			ts.format = isGammaCorrect() ? PIXELFORMAT_BGRA8_sRGB : PIXELFORMAT_BGRA8_UNORM;
 			backbufferMSAA.set(newTexture(ts), Acquire::NORETAIN);
+			// Without MSAA support (e.g. in the iOS simulator) the texture gets one sample,
+			// and a resolve texture can't be used with that, so draw straight to the screen.
+			if (backbufferMSAA->getMSAA() <= 1)
+				backbufferMSAA.set(nullptr);
 		}
 	}
 
